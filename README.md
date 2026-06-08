@@ -40,6 +40,7 @@ pip install -r requirements.txt
 python3 app.py --demo
 python3 app.py --question "What does DATE_SHIFT do and what parameters does it accept?"
 python3 app.py --question "Analyse this schema for PII" --schema masking-generator/tests/10_column_schema.json
+python3 database/run_db_analysis.py
 ```
 
 The default implementation runs locally without cloud credentials. `.env.example` documents the AWS Bedrock settings I would use when replacing the deterministic local vector stage or uncertain-column review path with AWS-hosted embeddings or model calls. Real AWS keys must stay in the AWS credential chain, never in git.

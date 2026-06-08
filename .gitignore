@@ -13,4 +13,6 @@ build/
 coverage.xml
 .coverage
 htmlcov/
-
+*.db
+*.sqlite
+*.sqlite3
