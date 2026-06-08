@@ -41,6 +41,7 @@ python3 app.py --demo
 python3 app.py --question "What does DATE_SHIFT do and what parameters does it accept?"
 python3 app.py --question "Analyse this schema for PII" --schema masking-generator/tests/10_column_schema.json
 python3 database/run_db_analysis.py
+uvicorn api:app --reload
 ```
 
 The default implementation runs locally without cloud credentials. `.env.example` documents the AWS Bedrock settings I would use when replacing the deterministic local vector stage or uncertain-column review path with AWS-hosted embeddings or model calls. Real AWS keys must stay in the AWS credential chain, never in git.
@@ -62,10 +63,12 @@ The detector uses a hybrid deterministic signal scorer: semantic column/table-na
 - Python was chosen because the task rewards fast iteration on AI quality tests, RAG evaluation, and lightweight local tooling.
 - The Day 1 detector is deterministic so recall, precision, and review routing can be regression tested without network or model variance.
 - The RAG retriever uses hybrid vector cosine plus BM25 with Reciprocal Rank Fusion because exact masking-function names and semantic context both matter.
+- The vector leg uses local TF-IDF embeddings by default for deterministic CI; `SCHEMA_ASSISTANT_EMBEDDING_BACKEND=sentence-transformers` can switch to local `all-MiniLM-L6-v2` embeddings when that optional runtime is available.
 - Every retrieved chunk carries `pii_category` metadata so documentation answers and masking-rule references can be category-filtered.
-- The local agent is a tool router rather than an unconstrained chatbot; documentation answers must call retrieval and include citations.
+- The local agent uses a LangGraph `StateGraph` with explicit route state and conditional edges; documentation answers must call retrieval before synthesis, and out-of-scope routes end before tool use.
 - AWS is treated as the production extension point, not a required local dependency, so reviewers can run the submission without secrets.
 - The `database/` demo builds and samples a real SQLite schema so the same detector contract can later sit behind live enterprise database connectors.
+- A minimal FastAPI wrapper exposes the same agent as `/chat` and `/analyze`, demonstrating how the local workflow can become a service endpoint.
 
 ## What I Would Do Differently With More Time
 
@@ -88,6 +91,6 @@ Covered:
 
 Not covered:
 
-- Real database connectivity, because the assignment is self-contained.
+- Production database connectivity, because the assignment is self-contained; the SQLite demo proves the schema-sampling contract with a real local database.
 - Live AWS Bedrock calls, because tests should run without credentials and no secrets should be committed.
 - UI workflows, because the requested deliverable is a standalone engineering tool.

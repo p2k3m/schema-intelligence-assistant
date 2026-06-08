@@ -28,6 +28,15 @@ def test_date_shift_answer_is_grounded():
     assert response_cites_source(response)
 
 
+def test_grounded_answer_contains_key_source_facts():
+    response = agent.chat("What parameters does EMAIL_MASK accept?")
+    assert response_cites_source(response)
+    assert semantic_overlap(
+        response,
+        {"email", "preserve_domain", "domain_strategy", "deterministic"},
+    ) >= 3
+
+
 def test_doc_question_triggers_retrieval():
     fake_docs = [
         {
@@ -45,6 +54,25 @@ def test_doc_question_triggers_retrieval():
     mock_search.assert_called_once_with("What parameters does EMAIL_MASK accept?", "EMAIL")
     assert response_cites_source(response)
     assert semantic_overlap(response, {"email", "address", "preserve", "domain"}) >= 2
+
+
+def test_graph_state_records_doc_tool_order():
+    state = agent.run_with_state("What parameters does EMAIL_MASK accept?")
+    assert state["route"] == agent_module.ROUTE_DOCS
+    assert state["tool_call_order"] == ["search_masking_docs"]
+    assert state["docs"]
+    assert response_cites_source(state["response"])
+
+
+def test_graph_cycles_from_detection_to_generator_for_schema_config():
+    schema = load_test_schema("10_column_schema.json")
+    state = agent.run_with_state(
+        "Generate a masking configuration for these results",
+        schema=schema,
+    )
+    assert state["route"] == agent_module.ROUTE_GENERATE_CONFIG
+    assert state["tool_call_order"] == ["detect_pii_columns", "generate_masking_config"]
+    assert state["masking_config"]["masking_rules"]
 
 
 def test_out_of_scope_query_rejected():

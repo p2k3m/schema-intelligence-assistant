@@ -1,16 +1,12 @@
-"""Local Schema Intelligence Agent.
-
-The agent is a deterministic router around the three required tools. In a
-production AWS setup, this router can sit behind Bedrock Converse or Agents,
-but the grounding rule remains the same: documentation answers must first call
-`search_masking_docs`.
-"""
+"""LangGraph-based local Schema Intelligence Agent."""
 
 from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, TypedDict
+
+from langgraph.graph import END, StateGraph
 
 try:
     from tools import detect_pii_columns, generate_masking_config, search_masking_docs
@@ -27,15 +23,33 @@ ROUTE_DOCS = "docs"
 ROUTE_HELP = "help"
 
 
-class SchemaIntelligenceAgent:
-    """Finite-state tool router for schema intelligence tasks.
+class AgentState(TypedDict, total=False):
+    user_message: str
+    schema: list[dict[str, Any]]
+    detections: list[dict[str, Any]]
+    route: str
+    single_column: dict[str, Any]
+    category_filter: str | None
+    docs: list[dict[str, object]]
+    masking_config: dict[str, Any]
+    response: str
+    current_tool: str
+    tool_call_order: list[str]
 
-    I intentionally did not use LangGraph for this local submission because
-    every required interaction is a bounded one-tool or two-tool workflow. The
-    explicit route state makes grounding enforceable in tests: documentation
-    routes call retrieval before response synthesis, and out-of-scope routes
-    terminate before any costly tool can run.
+
+class SchemaIntelligenceAgent:
+    """StateGraph tool orchestrator for schema intelligence tasks.
+
+    The graph is intentionally deterministic for local evaluation: intent is
+    classified by structured rules, then conditional edges force each route to
+    the correct tool node. Documentation routes cannot synthesize a response
+    until `search_masking_docs` has populated `docs`; out-of-scope routes end
+    before any tool node can run. For config generation from raw schema, the
+    graph cycles through detection first, then calls the generator.
     """
+
+    def __init__(self) -> None:
+        self.graph = build_graph()
 
     def chat(
         self,
@@ -43,55 +57,182 @@ class SchemaIntelligenceAgent:
         schema: list[dict[str, Any]] | None = None,
         detections: list[dict[str, Any]] | None = None,
     ) -> str:
-        message = user_message.strip()
-        lowered = message.lower()
-        route = _route(message, schema=schema, detections=detections)
+        return self.run_with_state(user_message, schema=schema, detections=detections)["response"]
 
-        if route == ROUTE_OUT_OF_SCOPE:
-            return (
-                "Out of scope: I can help with schema PII detection, data masking "
-                "configuration, and masking documentation questions."
-            )
-
-        if route == ROUTE_NEEDS_SCHEMA:
-            return "Please provide the table name, column name, data type, and sample values before I recommend masking."
-
-        if route == ROUTE_ANALYSE_SCHEMA:
-            if not schema:
-                return "Please provide schema JSON so I can analyse columns for PII."
-            return json.dumps({"detections": detect_pii_columns(schema)}, indent=2)
-
-        if route == ROUTE_GENERATE_CONFIG:
-            if detections is None:
-                if not schema:
-                    return "Please provide detection results or schema JSON before generating a masking configuration."
-                detections = detect_pii_columns(schema)
-            return json.dumps(generate_masking_config(detections), indent=2)
-
-        single_column = _extract_single_column_question(message)
-        if route == ROUTE_SINGLE_COLUMN and single_column:
-            result = detect_pii_columns([single_column])[0]
-            category = result["pii_category"] or "not PII"
-            return (
-                f"{single_column['table_name']}.{single_column['column_name']} is {category} "
-                f"with confidence {result['confidence']:.2f}. Reasoning: {result['reasoning']}"
-            )
-
-        if route == ROUTE_DOCS:
-            category_filter = _infer_category_filter(lowered)
-            docs = search_masking_docs(message, category_filter)
-            if not docs:
-                return "I could not find grounded masking documentation for that question."
-            return _grounded_answer(message, docs)
-
-        return (
-            "I can analyse schema JSON for PII, generate masking configuration JSON, "
-            "or answer data masking documentation questions."
-        )
+    def run_with_state(
+        self,
+        user_message: str,
+        schema: list[dict[str, Any]] | None = None,
+        detections: list[dict[str, Any]] | None = None,
+    ) -> AgentState:
+        state: AgentState = {
+            "user_message": user_message.strip(),
+            "tool_call_order": [],
+        }
+        if schema is not None:
+            state["schema"] = schema
+        if detections is not None:
+            state["detections"] = detections
+        return self.graph.invoke(state)
 
 
 def build_agent() -> SchemaIntelligenceAgent:
     return SchemaIntelligenceAgent()
+
+
+def build_graph():
+    graph = StateGraph(AgentState)
+    graph.add_node("classify_intent", classify_intent)
+    graph.add_node("call_tool", call_tool)
+    graph.add_node("synthesize_response", synthesize_response)
+    graph.add_node("handle_out_of_scope", handle_out_of_scope)
+
+    graph.set_entry_point("classify_intent")
+    graph.add_conditional_edges(
+        "classify_intent",
+        route_after_classification,
+        {
+            "tool": "call_tool",
+            "synthesize": "synthesize_response",
+            "out_of_scope": "handle_out_of_scope",
+        },
+    )
+    graph.add_conditional_edges(
+        "call_tool",
+        route_after_tool,
+        {
+            "continue": "call_tool",
+            "synthesize": "synthesize_response",
+        },
+    )
+    graph.add_edge("synthesize_response", END)
+    graph.add_edge("handle_out_of_scope", END)
+    return graph.compile()
+
+
+def classify_intent(state: AgentState) -> AgentState:
+    message = state["user_message"]
+    lowered = message.lower()
+    route = _route(message, schema=state.get("schema"), detections=state.get("detections"))
+    update: AgentState = {"route": route}
+
+    if route == ROUTE_SINGLE_COLUMN:
+        single_column = _extract_single_column_question(message)
+        if single_column:
+            update["single_column"] = single_column
+            update["current_tool"] = "detect_pii_columns"
+    elif route == ROUTE_ANALYSE_SCHEMA:
+        update["current_tool"] = "detect_pii_columns"
+    elif route == ROUTE_GENERATE_CONFIG:
+        update["current_tool"] = (
+            "generate_masking_config" if state.get("detections") else "detect_pii_columns"
+        )
+    elif route == ROUTE_DOCS:
+        update["current_tool"] = "search_masking_docs"
+        update["category_filter"] = _infer_category_filter(lowered)
+    return update
+
+
+def call_tool(state: AgentState) -> AgentState:
+    tool_name = state["current_tool"]
+    call_order = [*state.get("tool_call_order", []), tool_name]
+
+    if tool_name == "detect_pii_columns":
+        schema = state.get("schema") or [state["single_column"]]
+        detections = detect_pii_columns(schema)
+        update: AgentState = {"detections": detections, "tool_call_order": call_order}
+        if state["route"] == ROUTE_GENERATE_CONFIG:
+            update["current_tool"] = "generate_masking_config"
+        return update
+
+    if tool_name == "generate_masking_config":
+        return {
+            "masking_config": generate_masking_config(state["detections"]),
+            "tool_call_order": call_order,
+        }
+
+    if tool_name == "search_masking_docs":
+        return {
+            "docs": search_masking_docs(
+                state["user_message"],
+                state.get("category_filter"),
+            ),
+            "tool_call_order": call_order,
+        }
+
+    return {"tool_call_order": call_order}
+
+
+def synthesize_response(state: AgentState) -> AgentState:
+    route = state["route"]
+
+    if route == ROUTE_NEEDS_SCHEMA:
+        return {
+            "response": "Please provide the table name, column name, data type, and sample values before I recommend masking."
+        }
+
+    if route == ROUTE_ANALYSE_SCHEMA:
+        if "schema" not in state:
+            return {"response": "Please provide schema JSON so I can analyse columns for PII."}
+        return {"response": json.dumps({"detections": state["detections"]}, indent=2)}
+
+    if route == ROUTE_GENERATE_CONFIG:
+        if "masking_config" not in state:
+            return {
+                "response": "Please provide detection results or schema JSON before generating a masking configuration."
+            }
+        return {"response": json.dumps(state["masking_config"], indent=2)}
+
+    if route == ROUTE_SINGLE_COLUMN:
+        result = state["detections"][0]
+        single_column = state["single_column"]
+        category = result["pii_category"] or "not PII"
+        return {
+            "response": (
+                f"{single_column['table_name']}.{single_column['column_name']} is {category} "
+                f"with confidence {result['confidence']:.2f}. Reasoning: {result['reasoning']}"
+            )
+        }
+
+    if route == ROUTE_DOCS:
+        docs = state.get("docs", [])
+        if not docs:
+            return {"response": "I could not find grounded masking documentation for that question."}
+        return {"response": _grounded_answer(state["user_message"], docs)}
+
+    return {
+        "response": (
+            "I can analyse schema JSON for PII, generate masking configuration JSON, "
+            "or answer data masking documentation questions."
+        )
+    }
+
+
+def handle_out_of_scope(_state: AgentState) -> AgentState:
+    return {
+        "response": (
+            "Out of scope: I can help with schema PII detection, data masking "
+            "configuration, and masking documentation questions."
+        )
+    }
+
+
+def route_after_classification(state: AgentState) -> str:
+    if state["route"] == ROUTE_OUT_OF_SCOPE:
+        return "out_of_scope"
+    if state["route"] in {ROUTE_NEEDS_SCHEMA, ROUTE_HELP}:
+        return "synthesize"
+    if state["route"] == ROUTE_ANALYSE_SCHEMA and "schema" not in state:
+        return "synthesize"
+    if state["route"] == ROUTE_GENERATE_CONFIG and not state.get("detections") and "schema" not in state:
+        return "synthesize"
+    return "tool"
+
+
+def route_after_tool(state: AgentState) -> str:
+    if state["route"] == ROUTE_GENERATE_CONFIG and "masking_config" not in state:
+        return "continue"
+    return "synthesize"
 
 
 agent = SchemaIntelligenceAgent()
@@ -192,13 +333,65 @@ def _infer_category_filter(message: str) -> str | None:
 
 
 def _grounded_answer(_message: str, docs: list[dict[str, object]]) -> str:
-    primary = docs[0]
-    content = str(primary["content"])
-    cleaned = re.sub(r"^#+\s*", "", content, flags=re.MULTILINE)
-    cleaned = re.sub(r"^##?\s*", "", cleaned, flags=re.MULTILINE)
-    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", cleaned) if part.strip()]
-    selected = " ".join(sentences[:3])
-    return f"{selected} [Source: {primary['source']}]"
+    query_terms = _content_terms(_message)
+    candidates: list[tuple[int, str, str]] = []
+    for doc in docs:
+        source = str(doc["source"])
+        for section in _sections(str(doc["content"])):
+            score = len(query_terms & _content_terms(section))
+            if "parameters" in query_terms and "parameters" in section.lower():
+                score += 2
+            if "what does" in _message.lower() and "usage" in section.lower():
+                score += 2
+            candidates.append((score, section, source))
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    selected = [candidate for candidate in candidates if candidate[0] > 0][:2]
+    if not selected:
+        selected = candidates[:1]
+
+    parts = []
+    for _score, section, source in selected:
+        sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", section) if part.strip()]
+        snippet = " ".join(sentences[:2]).strip()
+        parts.append(f"{snippet} [Source: {source}]")
+    return " ".join(parts)
+
+
+def _sections(markdown: str) -> list[str]:
+    raw_sections = re.split(r"^##\s+", markdown, flags=re.MULTILINE)
+    return [
+        re.sub(r"\s+", " ", re.sub(r"^#+\s*", "", section, flags=re.MULTILINE)).strip()
+        for section in raw_sections
+        if section.strip()
+    ]
+
+
+def _content_terms(text: str) -> set[str]:
+    stopwords = {
+        "a",
+        "an",
+        "and",
+        "are",
+        "does",
+        "do",
+        "for",
+        "how",
+        "i",
+        "is",
+        "it",
+        "of",
+        "the",
+        "to",
+        "what",
+        "when",
+        "with",
+    }
+    return {
+        token
+        for token in re.findall(r"[a-z0-9_]+", text.lower())
+        if token not in stopwords
+    }
 
 
 if __name__ == "__main__":

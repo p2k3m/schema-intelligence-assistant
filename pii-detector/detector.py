@@ -35,6 +35,14 @@ class CategoryRule:
 class PiiDetector:
     """Classifies schema columns against the required PII categories."""
 
+    def __init__(
+        self,
+        llm_reviewer: Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]] | None = None,
+        enable_llm_escalation: bool = False,
+    ) -> None:
+        self._llm_reviewer = llm_reviewer
+        self._enable_llm_escalation = enable_llm_escalation
+
     def detect_all(self, schema: list[dict[str, Any]]) -> list[dict[str, Any]]:
         detections: list[dict[str, Any]] = []
         for column in schema:
@@ -122,15 +130,47 @@ class PiiDetector:
                 else "No strong PII name or sample-value signals found"
             )
 
-        return {
+        result = {
             "is_pii": is_pii,
             "confidence": round(confidence, 2),
             "pii_category": pii_category,
             "recommended_masking_function": masking_function,
             "review_required": review_required,
             "llm_escalation_recommended": llm_escalation_recommended,
+            "llm_escalation_used": False,
+            "reviewed_by": None,
             "reasoning": reasoning,
         }
+        if (
+            llm_escalation_recommended
+            and self._enable_llm_escalation
+            and self._llm_reviewer
+        ):
+            result = self._apply_llm_review(column, result)
+        return result
+
+    def _apply_llm_review(
+        self,
+        column: dict[str, Any],
+        preliminary: dict[str, Any],
+    ) -> dict[str, Any]:
+        review = self._llm_reviewer(column, preliminary)
+        result = {**preliminary, **review}
+        result["llm_escalation_used"] = True
+        result["reviewed_by"] = review.get("reviewed_by", "llm_reviewer")
+
+        category = result.get("pii_category")
+        if result.get("is_pii") and category:
+            result["recommended_masking_function"] = MASKING_FUNCTIONS[category]
+        else:
+            result["pii_category"] = None
+            result["recommended_masking_function"] = None
+
+        result["confidence"] = round(float(result.get("confidence", preliminary["confidence"])), 2)
+        result["review_required"] = result["confidence"] < AUTO_TAG_THRESHOLD
+        if review.get("reasoning"):
+            result["reasoning"] = f"{preliminary['reasoning']}; LLM review: {review['reasoning']}"
+        return result
 
 
 def _score_aliases(text: str, aliases: tuple[tuple[str, float], ...]) -> tuple[float, str]:
@@ -186,6 +226,8 @@ def _is_known_non_pii(column_name: str) -> bool:
         "status",
         "account status",
         "card type",
+        "phone model",
+        "address validation status",
         "created at",
         "updated at",
         "error message",
@@ -404,6 +446,7 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
             ("e_mail", 0.72),
             ("correo_electronico", 0.74),
             ("mail_addr", 0.70),
+            ("usr_mail_txt", 0.70),
             ("contact_email", 0.72),
         ),
         sample_matcher=_email_samples,
@@ -415,6 +458,7 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
             ("telephone", 0.68),
             ("cell_phone", 0.70),
             ("msisdn", 0.74),
+            ("telefono_movil", 0.74),
             ("fax_number", 0.64),
             ("phone", 0.66),
         ),

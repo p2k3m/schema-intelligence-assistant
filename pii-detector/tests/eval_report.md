@@ -2,10 +2,10 @@
 
 Golden set: `pii-detector/tests/schema_test_cases.json`
 
-- Total cases: 34
-- PII cases: 17
-- Non-PII cases: 17
-- True positives: 17
+- Total cases: 38
+- PII cases: 19
+- Non-PII cases: 19
+- True positives: 19
 - False positives: 0
 - False negatives: 0
 - Precision: 1.00

@@ -51,6 +51,38 @@ def test_low_confidence_sets_review_required():
         assert result["llm_escalation_recommended"] is True
 
 
+def test_optional_llm_escalation_can_change_grey_zone_result():
+    def reviewer(_column, preliminary):
+        assert preliminary["llm_escalation_recommended"] is True
+        return {
+            "is_pii": True,
+            "confidence": 0.86,
+            "pii_category": "ACCOUNT_NUMBER",
+            "reviewed_by": "mock_structured_llm",
+            "reasoning": "Reference code matches customer account format in tenant-specific examples",
+        }
+
+    escalated_detector = PiiDetector(
+        llm_reviewer=reviewer,
+        enable_llm_escalation=True,
+    )
+    result = escalated_detector.detect(
+        {
+            "table_name": "CONTRACTS",
+            "column_name": "ref_code",
+            "data_type": "VARCHAR(20)",
+            "sample_values": ["C-2024-001"],
+            "nullable": True,
+        }
+    )
+
+    assert result["llm_escalation_used"] is True
+    assert result["reviewed_by"] == "mock_structured_llm"
+    assert result["is_pii"] is True
+    assert result["pii_category"] == "ACCOUNT_NUMBER"
+    assert result["recommended_masking_function"] == "ACCOUNT_MASK"
+
+
 def test_recall_on_golden_set():
     cases = _load_cases()
     pii_cases = [case for case in cases if case["expected"]["is_pii"]]

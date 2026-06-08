@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+import os
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -41,10 +43,10 @@ def run_baseline() -> list[dict[str, object]]:
             answer=SchemaIntelligenceAgent().chat,
         ),
         Candidate(
-            name="Loose helpful policy (Claude 3.5 Haiku fallback estimate)",
+            name=_loose_candidate_name(),
             input_cost_per_million=0.80,
             output_cost_per_million=4.00,
-            answer=_loose_baseline_answer,
+            answer=_loose_candidate_answer,
         ),
     ]
 
@@ -90,6 +92,36 @@ def _loose_baseline_answer(query: str) -> str:
     return "I can help."
 
 
+def _loose_candidate_name() -> str:
+    if os.getenv("SCHEMA_ASSISTANT_AB_USE_OLLAMA") == "true":
+        model = os.getenv("SCHEMA_ASSISTANT_OLLAMA_MODEL", "llama3.2:1b")
+        return f"Loose helpful policy (Ollama {model}, Claude 3.5 Haiku cost estimate)"
+    return "Loose helpful policy (mocked, Claude 3.5 Haiku cost estimate)"
+
+
+def _loose_candidate_answer(query: str) -> str:
+    if os.getenv("SCHEMA_ASSISTANT_AB_USE_OLLAMA") != "true":
+        return _loose_baseline_answer(query)
+
+    model = os.getenv("SCHEMA_ASSISTANT_OLLAMA_MODEL", "llama3.2:1b")
+    prompt = (
+        "Answer helpfully but do not use retrieval tools. "
+        "This is an intentionally loose baseline.\n\n"
+        f"User: {query}"
+    )
+    try:
+        completed = subprocess.run(
+            ["ollama", "run", model, prompt],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return _loose_baseline_answer(query)
+    return completed.stdout.strip() or _loose_baseline_answer(query)
+
+
 def _score_response(query: str, response: str) -> int:
     lowered_query = query.lower()
     lowered_response = response.lower()
@@ -97,7 +129,10 @@ def _score_response(query: str, response: str) -> int:
 
     if "[source:" in lowered_response or "out of scope" in lowered_response or "provide" in lowered_response:
         score += 1
-    if "date_shift" in lowered_query and {"date", "shift"} <= set(_words(lowered_response)):
+    response_words = set(_words(lowered_response))
+    if "date_shift" in lowered_query and (
+        "date_shift" in lowered_response or {"date", "shift"} <= response_words
+    ):
         score += 1
     if "email_mask" in lowered_query and "email" in lowered_response:
         score += 1
@@ -150,6 +185,7 @@ def _write_report(rows: list[dict[str, object]]) -> None:
         "Rubric: 0 to 3 points per response. One point each for correct routing, grounded or safe behavior, and task-specific completeness.",
         "",
         "Pricing is estimated from configured per-million-token rates; the local test run does not call external APIs.",
+        "Set `SCHEMA_ASSISTANT_AB_USE_OLLAMA=true` to replace the mocked loose candidate with a local Ollama model when available.",
         "",
         "| Query | Candidate A | A Score | A Latency ms | A Tokens in/out | A Estimated cost USD | Candidate B | B Score | B Latency ms | B Tokens in/out | B Estimated cost USD | Notes |",
         "|---|---|---:|---:|---:|---:|---|---:|---:|---:|---:|---|",

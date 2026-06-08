@@ -16,9 +16,8 @@ In a 30-day pilot with 3 customers, I would measure:
 
 ## Risks and Limitations
 
-The system can miss obfuscated or domain-specific PII, confuse business identifiers with personal identifiers, or recommend a technically valid masking function that violates a customer policy. Guardrails include recall-oriented thresholds, explicit confidence scores, a review queue for uncertain columns, golden-set regression tests, grounded documentation answers, and out-of-scope refusal.
+The system can miss obfuscated or domain-specific PII, confuse business identifiers with personal identifiers, or recommend a technically valid masking function that violates a customer policy. Guardrails include recall-oriented thresholds, explicit confidence scores, a review queue for confidence below 0.80, optional grey-zone LLM escalation for 0.40 to 0.80 confidence, golden-set regression tests, hybrid RAG with citations, and out-of-scope refusal.
 
 ## What Should Stay Human
 
 Humans should approve low-confidence detections, customer-specific policy exceptions, production rollout timing, and any rule that preserves original characters from regulated identifiers. Compliance ownership should remain with the customer and data governance team; the assistant should accelerate review, not silently become the policy authority.
-

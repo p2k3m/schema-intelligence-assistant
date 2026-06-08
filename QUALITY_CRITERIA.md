@@ -21,6 +21,8 @@ Production escalation policy:
 - `0.40 <= confidence < 0.80`: route to batched LLM or embedding-assisted review only after cheap local rules have run.
 - `confidence >= 0.80` and `confidence < 0.40`: avoid LLM calls by default to control cost and latency.
 
+The chosen implementation starts with a deterministic hybrid scorer because it is recall-first, low-cost, and regression-testable. It uses semantic column patterns, table context, data type hints, and sample-value regex checks before any optional model escalation. This keeps the 5,000-column case fast while preserving an upgrade path for ambiguous columns.
+
 ## Test Data Plan
 
 The labelled dataset is stored in `pii-detector/tests/schema_test_cases.json`. Each test case contains:

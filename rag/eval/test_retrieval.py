@@ -37,3 +37,10 @@ def test_recall_at_3_on_masking_queries():
 
     recall_at_3 = hits / len(queries)
     assert recall_at_3 >= 0.70, f"Recall@3 {recall_at_3:.2f} below threshold"
+
+
+def test_vector_bm25_and_hybrid_modes_are_available():
+    for mode in ("vector", "bm25", "hybrid"):
+        results = retrieve("what does DATE_SHIFT do", top_k=3, mode=mode)
+        assert results
+        assert all("score" in result for result in results)
