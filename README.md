@@ -93,10 +93,11 @@ The detector uses a hybrid deterministic signal scorer: semantic column/table-na
 Covered:
 
 - PII detector unit tests, exact category mapping, recall, precision, and dataset shape.
-- Golden set with 30 labelled cases across at least 8 PII categories.
+- Golden set with 38 labelled cases across at least 8 PII categories.
 - RAG category filtering and Recall@3.
 - Masking generator review queue behavior, documentation references, and detector-to-generator integration.
 - Agent semantic correctness, retrieval grounding enforcement, out-of-scope rejection, PII recall regression, masking config completeness, and A/B baseline report generation.
+- Two `@pytest.mark.skipif` tests cover real local-model paths when enabled: `SCHEMA_ASSISTANT_USE_OLLAMA=true` for grey-zone LLM review, and `SCHEMA_ASSISTANT_TEST_SENTENCE_TRANSFORMERS=true` with `SCHEMA_ASSISTANT_EMBEDDING_BACKEND=sentence-transformers` for embedding retrieval.
 
 Not covered:
 
