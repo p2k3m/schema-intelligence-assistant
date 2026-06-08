@@ -1,0 +1,393 @@
+[
+  {
+    "input": {
+      "table_name": "CUSTOMERS",
+      "column_name": "full_name",
+      "data_type": "VARCHAR(120)",
+      "sample_values": ["Jane Doe", "Arun Mehta", "Maria Garcia"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "FULL_NAME"
+    }
+  },
+  {
+    "input": {
+      "table_name": "USERS",
+      "column_name": "correo_electronico",
+      "data_type": "VARCHAR(255)",
+      "sample_values": ["ana@example.mx", "dev.user@example.com"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "EMAIL"
+    }
+  },
+  {
+    "input": {
+      "table_name": "CONTACTS",
+      "column_name": "mobile_phone",
+      "data_type": "VARCHAR(32)",
+      "sample_values": ["+1 415-555-0199", "(212) 555-0110"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "PHONE"
+    }
+  },
+  {
+    "input": {
+      "table_name": "EMPLOYEES",
+      "column_name": "ssn",
+      "data_type": "CHAR(11)",
+      "sample_values": ["123-45-6789", "987-65-4321"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "SSN"
+    }
+  },
+  {
+    "input": {
+      "table_name": "PAYMENTS",
+      "column_name": "credit_card_number",
+      "data_type": "VARCHAR(24)",
+      "sample_values": ["4111 1111 1111 1111", "5555-5555-5555-4444"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "CREDIT_CARD"
+    }
+  },
+  {
+    "input": {
+      "table_name": "CUSTOMERS",
+      "column_name": "cust_acct_no",
+      "data_type": "VARCHAR(20)",
+      "sample_values": ["****1234", "ACC-98765", "null"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "ACCOUNT_NUMBER"
+    }
+  },
+  {
+    "input": {
+      "table_name": "PATIENTS",
+      "column_name": "dob",
+      "data_type": "DATE",
+      "sample_values": ["1980-04-02", "1975-11-30"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "DATE_OF_BIRTH"
+    }
+  },
+  {
+    "input": {
+      "table_name": "CUSTOMERS",
+      "column_name": "shipping_address",
+      "data_type": "VARCHAR(255)",
+      "sample_values": ["123 Main Street", "44 Market Road"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "ADDRESS"
+    }
+  },
+  {
+    "input": {
+      "table_name": "SESSIONS",
+      "column_name": "last_login_ip",
+      "data_type": "VARCHAR(45)",
+      "sample_values": ["192.168.1.22", "2001:db8::1"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "IP_ADDRESS"
+    }
+  },
+  {
+    "input": {
+      "table_name": "APPLICANTS",
+      "column_name": "national_insurance_number",
+      "data_type": "VARCHAR(16)",
+      "sample_values": ["QQ123456C", "AB123456D"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "NATIONAL_ID"
+    }
+  },
+  {
+    "input": {
+      "table_name": "EMPLOYEES",
+      "column_name": "surname",
+      "data_type": "VARCHAR(80)",
+      "sample_values": ["Mishra", "Olsen"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "FULL_NAME"
+    }
+  },
+  {
+    "input": {
+      "table_name": "CUSTOMERS",
+      "column_name": "msisdn",
+      "data_type": "VARCHAR(20)",
+      "sample_values": ["+91 98765 43210", "+44 7700 900123"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "PHONE"
+    }
+  },
+  {
+    "input": {
+      "table_name": "CITIZENS",
+      "column_name": "aadhaar_no",
+      "data_type": "VARCHAR(20)",
+      "sample_values": ["1234 5678 9012", "2345 6789 0123"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "NATIONAL_ID"
+    }
+  },
+  {
+    "input": {
+      "table_name": "ACCOUNTS",
+      "column_name": "home_street",
+      "data_type": "VARCHAR(180)",
+      "sample_values": ["900 Pine Lane", "12 Lake Drive"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "ADDRESS"
+    }
+  },
+  {
+    "input": {
+      "table_name": "USERS",
+      "column_name": "contact_email",
+      "data_type": "VARCHAR(255)",
+      "sample_values": ["contact@example.org", "person@example.net"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": true,
+      "pii_category": "EMAIL"
+    }
+  },
+  {
+    "input": {
+      "table_name": "ORDERS",
+      "column_name": "transaction_id",
+      "data_type": "BIGINT",
+      "sample_values": ["100001", "100002"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "ORDERS",
+      "column_name": "order_total",
+      "data_type": "DECIMAL(10,2)",
+      "sample_values": ["42.50", "109.99"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "INVENTORY",
+      "column_name": "product_name",
+      "data_type": "VARCHAR(120)",
+      "sample_values": ["Premium Router", "Switch License"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "INVENTORY",
+      "column_name": "sku",
+      "data_type": "VARCHAR(32)",
+      "sample_values": ["SKU-1001", "SKU-1002"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "PAYMENTS",
+      "column_name": "card_type",
+      "data_type": "VARCHAR(20)",
+      "sample_values": ["VISA", "MASTERCARD"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "ANALYTICS",
+      "column_name": "ip_country",
+      "data_type": "CHAR(2)",
+      "sample_values": ["US", "IN"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "CONTRACTS",
+      "column_name": "ref_code",
+      "data_type": "VARCHAR(20)",
+      "sample_values": ["C-2024-001"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "ORDERS",
+      "column_name": "account_status",
+      "data_type": "VARCHAR(20)",
+      "sample_values": ["ACTIVE", "SUSPENDED"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "EVENTS",
+      "column_name": "session_id",
+      "data_type": "VARCHAR(64)",
+      "sample_values": ["sess_abc123", "sess_def456"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "AUDIT_LOG",
+      "column_name": "created_at",
+      "data_type": "TIMESTAMP",
+      "sample_values": ["2026-05-27T10:00:00Z", "2026-05-28T11:00:00Z"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "MARKETING",
+      "column_name": "email_template_name",
+      "data_type": "VARCHAR(100)",
+      "sample_values": ["Welcome Email", "Renewal Reminder"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "SHIPMENTS",
+      "column_name": "city",
+      "data_type": "VARCHAR(80)",
+      "sample_values": ["Mumbai", "San Jose"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "FINANCE",
+      "column_name": "invoice_number",
+      "data_type": "VARCHAR(32)",
+      "sample_values": ["INV-10001", "INV-10002"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "LOGS",
+      "column_name": "error_message",
+      "data_type": "TEXT",
+      "sample_values": ["Timeout while calling service", "Invalid request state"],
+      "nullable": true
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  },
+  {
+    "input": {
+      "table_name": "PRODUCTS",
+      "column_name": "release_date",
+      "data_type": "DATE",
+      "sample_values": ["2026-01-15", "2026-04-30"],
+      "nullable": false
+    },
+    "expected": {
+      "is_pii": false,
+      "pii_category": null
+    }
+  }
+]
+

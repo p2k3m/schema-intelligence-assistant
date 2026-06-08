@@ -1,0 +1,99 @@
+import json
+from pathlib import Path
+
+from detector import MASKING_FUNCTIONS, PiiDetector
+
+
+detector = PiiDetector()
+
+
+def test_email_column_detected():
+    result = detector.detect(
+        {
+            "table_name": "USERS",
+            "column_name": "email_address",
+            "data_type": "VARCHAR(255)",
+            "sample_values": ["user@example.com"],
+            "nullable": True,
+        }
+    )
+    assert result["is_pii"] is True
+    assert result["pii_category"] == "EMAIL"
+    assert result["recommended_masking_function"] == "EMAIL_MASK"
+
+
+def test_non_pii_column_not_flagged():
+    result = detector.detect(
+        {
+            "table_name": "ORDERS",
+            "column_name": "transaction_id",
+            "data_type": "BIGINT",
+            "sample_values": ["100001", "100002"],
+            "nullable": False,
+        }
+    )
+    assert result["is_pii"] is False
+
+
+def test_low_confidence_sets_review_required():
+    result = detector.detect(
+        {
+            "table_name": "CONTRACTS",
+            "column_name": "ref_code",
+            "data_type": "VARCHAR(20)",
+            "sample_values": ["C-2024-001"],
+            "nullable": True,
+        }
+    )
+    if result["confidence"] < 0.80:
+        assert result["review_required"] is True
+
+
+def test_recall_on_golden_set():
+    cases = _load_cases()
+    pii_cases = [case for case in cases if case["expected"]["is_pii"]]
+    detected = sum(1 for case in pii_cases if detector.detect(case["input"])["is_pii"])
+    recall = detected / len(pii_cases)
+    assert recall >= 0.80, f"Recall {recall:.2f} below threshold"
+
+
+def test_precision_on_golden_set():
+    cases = _load_cases()
+    predicted_pii = [case for case in cases if detector.detect(case["input"])["is_pii"]]
+    true_positives = sum(1 for case in predicted_pii if case["expected"]["is_pii"])
+    precision = true_positives / len(predicted_pii)
+    assert precision >= 0.75, f"Precision {precision:.2f} below threshold"
+
+
+def test_expected_categories_and_masking_functions_on_golden_set():
+    for case in _load_cases():
+        result = detector.detect(case["input"])
+        expected = case["expected"]
+        assert result["is_pii"] is expected["is_pii"], case["input"]["column_name"]
+        if expected["is_pii"]:
+            category = expected["pii_category"]
+            assert result["pii_category"] == category, case["input"]["column_name"]
+            assert result["recommended_masking_function"] == MASKING_FUNCTIONS[category]
+        else:
+            assert result["pii_category"] is None
+            assert result["recommended_masking_function"] is None
+
+
+def test_golden_set_shape():
+    cases = _load_cases()
+    assert len(cases) == 30
+    assert sum(1 for case in cases if case["expected"]["is_pii"]) == 15
+    assert sum(1 for case in cases if not case["expected"]["is_pii"]) == 15
+
+    categories = {
+        case["expected"]["pii_category"]
+        for case in cases
+        if case["expected"]["is_pii"]
+    }
+    assert len(categories) >= 8
+
+
+def _load_cases():
+    path = Path(__file__).with_name("schema_test_cases.json")
+    return json.loads(path.read_text())
+

@@ -1,0 +1,43 @@
+[
+  {
+    "query": "what is data masking and why do enterprises use it",
+    "expected_source_title": "What Is Data Masking"
+  },
+  {
+    "query": "which masking function should I use for names emails and accounts",
+    "expected_source_title": "Masking Functions Overview"
+  },
+  {
+    "query": "how does NAME_RANDOMIZE work for customer full names",
+    "expected_source_title": "NAME_RANDOMIZE"
+  },
+  {
+    "query": "what parameters does EMAIL_MASK accept",
+    "expected_source_title": "EMAIL_MASK"
+  },
+  {
+    "query": "how should phone numbers and SSNs be masked",
+    "expected_source_title": "PHONE_MASK and SSN_MASK"
+  },
+  {
+    "query": "how do CREDIT_CARD_MASK and ACCOUNT_MASK protect financial identifiers",
+    "expected_source_title": "CREDIT_CARD_MASK and ACCOUNT_MASK"
+  },
+  {
+    "query": "what does DATE_SHIFT do and does it preserve date format",
+    "expected_source_title": "DATE_SHIFT"
+  },
+  {
+    "query": "how do I mask postal addresses IP addresses and national IDs",
+    "expected_source_title": "ADDRESS_RANDOMIZE, IP_MASK, and NATIONAL_ID_MASK"
+  },
+  {
+    "query": "how do I configure and run a masking job",
+    "expected_source_title": "Configuring and Running a Masking Job"
+  },
+  {
+    "query": "how do GDPR and CCPA affect data masking workflows",
+    "expected_source_title": "GDPR and CCPA Compliance"
+  }
+]
+

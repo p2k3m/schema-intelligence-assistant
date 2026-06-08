@@ -1,0 +1,90 @@
+Implementation: Python
+
+# Schema Intelligence Assistant
+
+AI-assisted schema review for enterprise data masking. The project detects likely PII columns, recommends masking functions, retrieves masking documentation with hybrid RAG, generates masking configuration JSON, and exposes a local agent runner.
+
+## Architecture
+
+```text
+Schema JSON
+   |
+   v
+PII Detector ---------+
+   |                  |
+   v                  v
+Detection Results   Documentation Question
+   |                  |
+   v                  v
+Masking Generator   Hybrid RAG: vector cosine + BM25 + RRF
+   |                  |
+   v                  v
+Masking Config JSON  Grounded Answer with Citation
+   \                  /
+    \                /
+     v              v
+      Local Schema Intelligence Agent
+```
+
+## Setup
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Run Locally
+
+```bash
+python3 app.py --demo
+python3 app.py --question "What does DATE_SHIFT do and what parameters does it accept?"
+python3 app.py --question "Analyse this schema for PII" --schema masking-generator/tests/10_column_schema.json
+```
+
+The default implementation runs locally without cloud credentials. `.env.example` documents the AWS Bedrock settings I would use when replacing the deterministic local vector stage or uncertain-column review path with AWS-hosted embeddings or model calls. Real AWS keys must stay in the AWS credential chain, never in git.
+
+## Test
+
+```bash
+python3 -m pytest -q
+python3 rag/eval/evaluate_retrieval.py
+python3 agent/tests/ab_comparison.py
+```
+
+## Approach
+
+The detector uses a hybrid deterministic signal scorer: semantic column/table-name patterns plus sample-value pattern checks. This gives repeatable test results, no API dependency, and low per-column cost for onboarding-scale schemas. In a production version, columns with uncertain confidence would be routed to an embedding or LLM review stage rather than calling an LLM for every column.
+
+## Design Decisions
+
+- Python was chosen because the task rewards fast iteration on AI quality tests, RAG evaluation, and lightweight local tooling.
+- The Day 1 detector is deterministic so recall, precision, and review routing can be regression tested without network or model variance.
+- The RAG retriever uses hybrid vector cosine plus BM25 with Reciprocal Rank Fusion because exact masking-function names and semantic context both matter.
+- Every retrieved chunk carries `pii_category` metadata so documentation answers and masking-rule references can be category-filtered.
+- The local agent is a tool router rather than an unconstrained chatbot; documentation answers must call retrieval and include citations.
+- AWS is treated as the production extension point, not a required local dependency, so reviewers can run the submission without secrets.
+
+## What I Would Do Differently With More Time
+
+- Add a larger labelled schema corpus from real anonymized customer patterns.
+- Add AWS Bedrock Titan embeddings behind the same `retrieve()` interface and compare Recall@3 against the local vector baseline.
+- Add a human feedback store so review decisions improve future thresholds.
+- Add policy profiles for different industries and geographies.
+- Package the local runner as a small FastAPI service for UI and API demos.
+
+## Test Coverage Summary
+
+Covered:
+
+- PII detector unit tests, exact category mapping, recall, precision, and dataset shape.
+- Golden set with 30 labelled cases across at least 8 PII categories.
+- RAG category filtering and Recall@3.
+- Masking generator review queue behavior, documentation references, and detector-to-generator integration.
+- Agent semantic correctness, retrieval grounding enforcement, out-of-scope rejection, PII recall regression, masking config completeness, and A/B baseline report generation.
+
+Not covered:
+
+- Real database connectivity, because the assignment is self-contained.
+- Live AWS Bedrock calls, because tests should run without credentials and no secrets should be committed.
+- UI workflows, because the requested deliverable is a standalone engineering tool.

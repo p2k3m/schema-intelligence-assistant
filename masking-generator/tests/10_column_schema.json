@@ -1,0 +1,73 @@
+[
+  {
+    "table_name": "CUSTOMERS",
+    "column_name": "full_name",
+    "data_type": "VARCHAR(120)",
+    "sample_values": ["Jane Doe", "Arun Mehta"],
+    "nullable": false
+  },
+  {
+    "table_name": "CUSTOMERS",
+    "column_name": "email_address",
+    "data_type": "VARCHAR(255)",
+    "sample_values": ["jane@example.com", "arun@example.in"],
+    "nullable": false
+  },
+  {
+    "table_name": "CUSTOMERS",
+    "column_name": "cust_acct_no",
+    "data_type": "VARCHAR(20)",
+    "sample_values": ["ACC-98765", "****1234"],
+    "nullable": true
+  },
+  {
+    "table_name": "CUSTOMERS",
+    "column_name": "shipping_address",
+    "data_type": "VARCHAR(255)",
+    "sample_values": ["123 Main Street", "44 Market Road"],
+    "nullable": true
+  },
+  {
+    "table_name": "PAYMENTS",
+    "column_name": "credit_card_number",
+    "data_type": "VARCHAR(24)",
+    "sample_values": ["4111 1111 1111 1111", "5555-5555-5555-4444"],
+    "nullable": true
+  },
+  {
+    "table_name": "ORDERS",
+    "column_name": "transaction_id",
+    "data_type": "BIGINT",
+    "sample_values": ["100001", "100002"],
+    "nullable": false
+  },
+  {
+    "table_name": "ORDERS",
+    "column_name": "order_total",
+    "data_type": "DECIMAL(10,2)",
+    "sample_values": ["42.50", "109.99"],
+    "nullable": false
+  },
+  {
+    "table_name": "MARKETING",
+    "column_name": "email_template_name",
+    "data_type": "VARCHAR(100)",
+    "sample_values": ["Welcome Email", "Renewal Reminder"],
+    "nullable": false
+  },
+  {
+    "table_name": "CONTRACTS",
+    "column_name": "ref_code",
+    "data_type": "VARCHAR(20)",
+    "sample_values": ["C-2024-001"],
+    "nullable": true
+  },
+  {
+    "table_name": "AUDIT_LOG",
+    "column_name": "created_at",
+    "data_type": "TIMESTAMP",
+    "sample_values": ["2026-05-27T10:00:00Z"],
+    "nullable": false
+  }
+]
+
