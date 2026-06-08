@@ -65,6 +65,7 @@ The detector uses a hybrid deterministic signal scorer: semantic column/table-na
 - Every retrieved chunk carries `pii_category` metadata so documentation answers and masking-rule references can be category-filtered.
 - The local agent is a tool router rather than an unconstrained chatbot; documentation answers must call retrieval and include citations.
 - AWS is treated as the production extension point, not a required local dependency, so reviewers can run the submission without secrets.
+- The `database/` demo builds and samples a real SQLite schema so the same detector contract can later sit behind live enterprise database connectors.
 
 ## What I Would Do Differently With More Time
 
@@ -73,6 +74,7 @@ The detector uses a hybrid deterministic signal scorer: semantic column/table-na
 - Add a human feedback store so review decisions improve future thresholds.
 - Add policy profiles for different industries and geographies.
 - Package the local runner as a small FastAPI service for UI and API demos.
+- Replace the SQLite demo adapter with read-only connectors for PostgreSQL, Oracle, SQL Server, and Snowflake metadata APIs.
 
 ## Test Coverage Summary
 

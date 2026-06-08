@@ -47,6 +47,8 @@ def test_low_confidence_sets_review_required():
     )
     if result["confidence"] < 0.80:
         assert result["review_required"] is True
+    if 0.40 <= result["confidence"] < 0.80:
+        assert result["llm_escalation_recommended"] is True
 
 
 def test_recall_on_golden_set():
@@ -81,9 +83,9 @@ def test_expected_categories_and_masking_functions_on_golden_set():
 
 def test_golden_set_shape():
     cases = _load_cases()
-    assert len(cases) == 30
-    assert sum(1 for case in cases if case["expected"]["is_pii"]) == 15
-    assert sum(1 for case in cases if not case["expected"]["is_pii"]) == 15
+    assert len(cases) >= 30
+    assert sum(1 for case in cases if case["expected"]["is_pii"]) >= 15
+    assert sum(1 for case in cases if not case["expected"]["is_pii"]) >= 15
 
     categories = {
         case["expected"]["pii_category"]
@@ -96,4 +98,3 @@ def test_golden_set_shape():
 def _load_cases():
     path = Path(__file__).with_name("schema_test_cases.json")
     return json.loads(path.read_text())
-

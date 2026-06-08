@@ -18,7 +18,25 @@ except ModuleNotFoundError:
     from .tools import detect_pii_columns, generate_masking_config, search_masking_docs
 
 
+ROUTE_OUT_OF_SCOPE = "out_of_scope"
+ROUTE_NEEDS_SCHEMA = "needs_schema"
+ROUTE_ANALYSE_SCHEMA = "analyse_schema"
+ROUTE_GENERATE_CONFIG = "generate_config"
+ROUTE_SINGLE_COLUMN = "single_column"
+ROUTE_DOCS = "docs"
+ROUTE_HELP = "help"
+
+
 class SchemaIntelligenceAgent:
+    """Finite-state tool router for schema intelligence tasks.
+
+    I intentionally did not use LangGraph for this local submission because
+    every required interaction is a bounded one-tool or two-tool workflow. The
+    explicit route state makes grounding enforceable in tests: documentation
+    routes call retrieval before response synthesis, and out-of-scope routes
+    terminate before any costly tool can run.
+    """
+
     def chat(
         self,
         user_message: str,
@@ -27,22 +45,23 @@ class SchemaIntelligenceAgent:
     ) -> str:
         message = user_message.strip()
         lowered = message.lower()
+        route = _route(message, schema=schema, detections=detections)
 
-        if _is_out_of_scope(lowered):
+        if route == ROUTE_OUT_OF_SCOPE:
             return (
                 "Out of scope: I can help with schema PII detection, data masking "
                 "configuration, and masking documentation questions."
             )
 
-        if "mask this column" in lowered and not schema:
+        if route == ROUTE_NEEDS_SCHEMA:
             return "Please provide the table name, column name, data type, and sample values before I recommend masking."
 
-        if _asks_for_schema_analysis(lowered):
+        if route == ROUTE_ANALYSE_SCHEMA:
             if not schema:
                 return "Please provide schema JSON so I can analyse columns for PII."
             return json.dumps({"detections": detect_pii_columns(schema)}, indent=2)
 
-        if _asks_for_config(lowered):
+        if route == ROUTE_GENERATE_CONFIG:
             if detections is None:
                 if not schema:
                     return "Please provide detection results or schema JSON before generating a masking configuration."
@@ -50,7 +69,7 @@ class SchemaIntelligenceAgent:
             return json.dumps(generate_masking_config(detections), indent=2)
 
         single_column = _extract_single_column_question(message)
-        if single_column:
+        if route == ROUTE_SINGLE_COLUMN and single_column:
             result = detect_pii_columns([single_column])[0]
             category = result["pii_category"] or "not PII"
             return (
@@ -58,7 +77,7 @@ class SchemaIntelligenceAgent:
                 f"with confidence {result['confidence']:.2f}. Reasoning: {result['reasoning']}"
             )
 
-        if _is_documentation_question(lowered):
+        if route == ROUTE_DOCS:
             category_filter = _infer_category_filter(lowered)
             docs = search_masking_docs(message, category_filter)
             if not docs:
@@ -76,6 +95,27 @@ def build_agent() -> SchemaIntelligenceAgent:
 
 
 agent = SchemaIntelligenceAgent()
+
+
+def _route(
+    message: str,
+    schema: list[dict[str, Any]] | None = None,
+    detections: list[dict[str, Any]] | None = None,
+) -> str:
+    lowered = message.lower()
+    if _is_out_of_scope(lowered):
+        return ROUTE_OUT_OF_SCOPE
+    if "mask this column" in lowered and not schema:
+        return ROUTE_NEEDS_SCHEMA
+    if _asks_for_schema_analysis(lowered):
+        return ROUTE_ANALYSE_SCHEMA
+    if _asks_for_config(lowered):
+        return ROUTE_GENERATE_CONFIG
+    if _extract_single_column_question(message):
+        return ROUTE_SINGLE_COLUMN
+    if _is_documentation_question(lowered):
+        return ROUTE_DOCS
+    return ROUTE_HELP
 
 
 def _asks_for_schema_analysis(message: str) -> bool:
@@ -154,8 +194,10 @@ def _infer_category_filter(message: str) -> str | None:
 def _grounded_answer(_message: str, docs: list[dict[str, object]]) -> str:
     primary = docs[0]
     content = str(primary["content"])
-    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", content) if part.strip()]
-    selected = " ".join(sentences[1:4] if len(sentences) > 3 else sentences[:3])
+    cleaned = re.sub(r"^#+\s*", "", content, flags=re.MULTILINE)
+    cleaned = re.sub(r"^##?\s*", "", cleaned, flags=re.MULTILINE)
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", cleaned) if part.strip()]
+    selected = " ".join(sentences[:3])
     return f"{selected} [Source: {primary['source']}]"
 
 

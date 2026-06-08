@@ -15,7 +15,14 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Callable
 
-from pii_patterns import AUTO_TAG_THRESHOLD, MASKING_FUNCTIONS, PII_DETECTION_THRESHOLD, REVIEW_LOWER_BOUND
+from pii_patterns import (
+    AUTO_TAG_THRESHOLD,
+    LLM_ESCALATION_HIGH,
+    LLM_ESCALATION_LOW,
+    MASKING_FUNCTIONS,
+    PII_DETECTION_THRESHOLD,
+    REVIEW_LOWER_BOUND,
+)
 
 
 @dataclass(frozen=True)
@@ -97,6 +104,7 @@ class PiiDetector:
             ]
 
         is_pii = confidence >= PII_DETECTION_THRESHOLD
+        llm_escalation_recommended = LLM_ESCALATION_LOW <= confidence < LLM_ESCALATION_HIGH
         review_required = confidence < AUTO_TAG_THRESHOLD and (
             is_pii or confidence >= REVIEW_LOWER_BOUND
         )
@@ -120,6 +128,7 @@ class PiiDetector:
             "pii_category": pii_category,
             "recommended_masking_function": masking_function,
             "review_required": review_required,
+            "llm_escalation_recommended": llm_escalation_recommended,
             "reasoning": reasoning,
         }
 
@@ -181,7 +190,9 @@ def _is_known_non_pii(column_name: str) -> bool:
         "updated at",
         "error message",
         "email template name",
+        "email bounce count",
         "ip country",
+        "ssn error count",
         "city",
         "order total",
         "product name",
@@ -479,6 +490,8 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
             ("national_id", 0.80),
             ("national_identifier", 0.78),
             ("national_insurance_number", 0.84),
+            ("nat_ins_no", 0.82),
+            ("nino", 0.78),
             ("passport_number", 0.78),
             ("passport_no", 0.78),
             ("tax_id", 0.74),

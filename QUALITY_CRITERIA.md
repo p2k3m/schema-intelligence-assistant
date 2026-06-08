@@ -16,6 +16,11 @@ Confidence bands:
 - `0.35 <= confidence < 0.60`: do not auto-tag; route to human review when generic identifier signals exist.
 - `confidence < 0.35`: treat as non-PII unless a downstream reviewer or customer policy says otherwise.
 
+Production escalation policy:
+
+- `0.40 <= confidence < 0.80`: route to batched LLM or embedding-assisted review only after cheap local rules have run.
+- `confidence >= 0.80` and `confidence < 0.40`: avoid LLM calls by default to control cost and latency.
+
 ## Test Data Plan
 
 The labelled dataset is stored in `pii-detector/tests/schema_test_cases.json`. Each test case contains:
@@ -33,6 +38,7 @@ The initial golden set has 30 column descriptors: 15 PII and 15 non-PII. It cove
 Required edge cases:
 
 - Obfuscated or abbreviated column names, such as `cust_acct_no` and `msisdn`.
+- Obfuscated identifiers such as `usr_ssn_txt` and `nat_ins_no`, where sample values should reinforce the classification.
 - Non-English names, such as `correo_electronico`.
 - Numeric PII that must be distinguished from business identifiers, such as SSN versus `transaction_id`.
 - Unusual regional identifiers, such as `national_insurance_number`.
@@ -42,4 +48,3 @@ Required edge cases:
 ## Day 1 Success Metric
 
 The implementation is considered Day 1 shippable only if it reaches at least `Recall@PII >= 0.80` on the golden set. The test suite also checks precision so the detector cannot pass by flagging everything as PII.
-
