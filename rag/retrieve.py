@@ -48,6 +48,10 @@ class LocalHybridIndex:
         self._chunks = chunks
         self._embedding_backend = _EmbeddingBackend(chunks)
 
+    @property
+    def embedding_backend_name(self) -> str:
+        return self._embedding_backend.name
+
     def search(
         self,
         query: str,

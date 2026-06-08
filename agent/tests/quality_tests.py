@@ -75,6 +75,19 @@ def test_graph_cycles_from_detection_to_generator_for_schema_config():
     assert state["masking_config"]["masking_rules"]
 
 
+def test_graph_state_covers_grey_zone_detection_and_docs_route():
+    grey_state = agent.run_with_state("Is column ref_code in table ORDERS PII?")
+    assert grey_state["route"] == agent_module.ROUTE_SINGLE_COLUMN
+    assert grey_state["tool_call_order"] == ["detect_pii_columns"]
+    assert grey_state["detections"][0]["llm_escalation_recommended"] is True
+    assert "confidence" in grey_state["response"].lower()
+
+    docs_state = agent.run_with_state("What parameters does ACCOUNT_MASK accept?")
+    assert docs_state["route"] == agent_module.ROUTE_DOCS
+    assert docs_state["tool_call_order"] == ["search_masking_docs"]
+    assert response_cites_source(docs_state["response"])
+
+
 def test_out_of_scope_query_rejected():
     with patch.object(agent_module, "search_masking_docs") as mock_search, patch.object(
         agent_module, "detect_pii_columns"

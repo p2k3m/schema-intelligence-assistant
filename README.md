@@ -54,6 +54,14 @@ python3 rag/eval/evaluate_retrieval.py
 python3 agent/tests/ab_comparison.py
 ```
 
+Optional local model checks:
+
+```bash
+SCHEMA_ASSISTANT_USE_OLLAMA=true python3 -m pytest pii-detector/tests/test_detector.py -q
+SCHEMA_ASSISTANT_TEST_SENTENCE_TRANSFORMERS=true SCHEMA_ASSISTANT_EMBEDDING_BACKEND=sentence-transformers python3 -m pytest rag/eval/test_retrieval.py -q
+SCHEMA_ASSISTANT_AB_USE_OLLAMA=true python3 agent/tests/ab_comparison.py
+```
+
 ## Approach
 
 The detector uses a hybrid deterministic signal scorer: semantic column/table-name patterns plus sample-value pattern checks. This gives repeatable test results, no API dependency, and low per-column cost for onboarding-scale schemas. In a production version, columns with uncertain confidence would be routed to an embedding or LLM review stage rather than calling an LLM for every column.
@@ -66,6 +74,7 @@ The detector uses a hybrid deterministic signal scorer: semantic column/table-na
 - The vector leg uses local TF-IDF embeddings by default for deterministic CI; `SCHEMA_ASSISTANT_EMBEDDING_BACKEND=sentence-transformers` can switch to local `all-MiniLM-L6-v2` embeddings when that optional runtime is available.
 - Every retrieved chunk carries `pii_category` metadata so documentation answers and masking-rule references can be category-filtered.
 - The local agent uses a LangGraph `StateGraph` with explicit route state and conditional edges; documentation answers must call retrieval before synthesis, and out-of-scope routes end before tool use.
+- The LangGraph graph plus optional `llm_reviewer` hook implements the task's recommended hybrid approach: cheap deterministic handling for confident cases, model review only for uncertain columns.
 - AWS is treated as the production extension point, not a required local dependency, so reviewers can run the submission without secrets.
 - The `database/` demo builds and samples a real SQLite schema so the same detector contract can later sit behind live enterprise database connectors.
 - A minimal FastAPI wrapper exposes the same agent as `/chat` and `/analyze`, demonstrating how the local workflow can become a service endpoint.

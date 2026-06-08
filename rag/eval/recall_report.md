@@ -4,9 +4,9 @@ Hybrid Recall@3: 1.00 (10/10)
 
 | Retriever | Recall@3 | Total latency ms | Avg latency ms/query |
 |---|---:|---:|---:|
-| vector | 1.00 (10/10) | 19.60 | 1.96 |
-| bm25 | 0.90 (9/10) | 19.24 | 1.92 |
-| hybrid | 1.00 (10/10) | 18.88 | 1.89 |
+| vector | 1.00 (10/10) | 20.06 | 2.01 |
+| bm25 | 0.90 (9/10) | 18.73 | 1.87 |
+| hybrid | 1.00 (10/10) | 18.50 | 1.85 |
 
 The hybrid retriever combines the vector and BM25 rankings with Reciprocal Rank Fusion.
 

@@ -1,7 +1,11 @@
 import json
+import os
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
+from ingest import load_corpus
 from retrieve import LocalHybridIndex, retrieve
 
 
@@ -44,3 +48,18 @@ def test_vector_bm25_and_hybrid_modes_are_available():
         results = retrieve("what does DATE_SHIFT do", top_k=3, mode=mode)
         assert results
         assert all("score" in result for result in results)
+
+
+@pytest.mark.skipif(
+    os.getenv("SCHEMA_ASSISTANT_TEST_SENTENCE_TRANSFORMERS") != "true",
+    reason="Set SCHEMA_ASSISTANT_TEST_SENTENCE_TRANSFORMERS=true to verify the optional sentence-transformers backend.",
+)
+def test_optional_sentence_transformers_backend(monkeypatch):
+    monkeypatch.setenv("SCHEMA_ASSISTANT_EMBEDDING_BACKEND", "sentence-transformers")
+    index = LocalHybridIndex(load_corpus())
+    if not index.embedding_backend_name.startswith("sentence-transformers/"):
+        pytest.skip("sentence-transformers backend is unavailable; deterministic TF-IDF fallback is active.")
+
+    results = index.search("what does DATE_SHIFT do", top_k=3, mode="vector")
+    assert index.embedding_backend_name == "sentence-transformers/all-MiniLM-L6-v2"
+    assert results

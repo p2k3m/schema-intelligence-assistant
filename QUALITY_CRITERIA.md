@@ -23,6 +23,8 @@ Production escalation policy:
 
 The chosen implementation starts with a deterministic hybrid scorer because it is recall-first, low-cost, and regression-testable. It uses semantic column patterns, table context, data type hints, and sample-value regex checks before any optional model escalation. This keeps the 5,000-column case fast while preserving an upgrade path for ambiguous columns.
 
+The optional `llm_reviewer` parameter provides a production extension point for grey-zone columns; a local Ollama structured reviewer can be enabled in tests with `SCHEMA_ASSISTANT_USE_OLLAMA=true`. The RAG vector leg can similarly be checked with `SCHEMA_ASSISTANT_TEST_SENTENCE_TRANSFORMERS=true` and `SCHEMA_ASSISTANT_EMBEDDING_BACKEND=sentence-transformers`.
+
 ## Test Data Plan
 
 The labelled dataset is stored in `pii-detector/tests/schema_test_cases.json`. Each test case contains:
