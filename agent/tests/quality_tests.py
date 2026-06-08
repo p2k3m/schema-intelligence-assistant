@@ -3,6 +3,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 for relative in ("agent", "pii-detector", "masking-generator", "rag"):
     path = str(ROOT / relative)
@@ -75,11 +77,43 @@ def test_graph_cycles_from_detection_to_generator_for_schema_config():
     assert state["masking_config"]["masking_rules"]
 
 
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Scan this schema for sensitive columns",
+        "Find PII in this database schema",
+        "Identify sensitive fields in this table list",
+    ],
+)
+def test_schema_analysis_synonyms(message):
+    schema = load_test_schema("10_column_schema.json")
+    response = agent.chat(message, schema=schema)
+    parsed = json.loads(response)
+    assert "detections" in parsed
+    assert any(item["column_name"] == "email_address" for item in parsed["detections"])
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Create masking rules for these results",
+        "Build masking policy for these results",
+    ],
+)
+def test_masking_config_synonyms(message):
+    schema = load_test_schema("10_column_schema.json")
+    detections = PiiDetector().detect_all(schema)
+    response = agent.chat(message, detections=detections)
+    parsed = json.loads(response)
+    assert parsed["masking_rules"]
+
+
 def test_graph_state_covers_grey_zone_detection_and_docs_route():
     grey_state = agent.run_with_state("Is column ref_code in table ORDERS PII?")
     assert grey_state["route"] == agent_module.ROUTE_SINGLE_COLUMN
     assert grey_state["tool_call_order"] == ["detect_pii_columns"]
     assert grey_state["detections"][0]["llm_escalation_recommended"] is True
+    assert "requires human review" in grey_state["response"].lower()
     assert "confidence" in grey_state["response"].lower()
 
     docs_state = agent.run_with_state("What parameters does ACCOUNT_MASK accept?")

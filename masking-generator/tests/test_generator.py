@@ -23,6 +23,29 @@ def test_low_confidence_goes_to_review_queue():
     assert not any(rule["column"] == "ref_code" for rule in config["masking_rules"])
 
 
+def test_review_required_non_pii_still_goes_to_review_queue():
+    detections = [
+        {
+            "table_name": "ORDERS",
+            "column_name": "ref_code",
+            "is_pii": False,
+            "confidence": 0.45,
+            "pii_category": None,
+            "recommended_masking_function": None,
+            "review_required": True,
+            "reasoning": "generic identifier pattern is ambiguous",
+        }
+    ]
+
+    config = generator.generate(detections)
+
+    assert any(item["column"] == "ref_code" for item in config["review_queue"])
+    assert not any(rule["column"] == "ref_code" for rule in config["masking_rules"])
+    review_item = config["review_queue"][0]
+    assert review_item["suggested_function"] == "UNDETERMINED"
+    assert "generic identifier pattern" in review_item["reason"]
+
+
 def test_documentation_references_exist():
     config = generator.generate(sample_detections())
     corpus_files = {path.name for path in Path("rag/corpus").glob("*.md")}
@@ -73,4 +96,3 @@ def sample_detections():
             pii_category=None,
         ),
     ]
-

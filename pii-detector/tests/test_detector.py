@@ -146,6 +146,25 @@ def test_recall_on_golden_set():
     assert recall >= 0.80, f"Recall {recall:.2f} below threshold"
 
 
+def test_recall_on_adversarial_set():
+    cases = _load_cases("adversarial_schema_test_cases.json")
+    pii_cases = [case for case in cases if case["expected"]["is_pii"]]
+    detected = sum(1 for case in pii_cases if detector.detect(case["input"])["is_pii"])
+    recall = detected / len(pii_cases)
+    assert recall >= 0.85, f"Adversarial recall {recall:.2f} below threshold"
+
+
+def test_expected_categories_on_adversarial_set():
+    for case in _load_cases("adversarial_schema_test_cases.json"):
+        result = detector.detect(case["input"])
+        expected = case["expected"]
+        assert result["is_pii"] is expected["is_pii"], case["input"]["column_name"]
+        if expected["is_pii"]:
+            assert result["pii_category"] == expected["pii_category"], case["input"]["column_name"]
+        if expected.get("review_required"):
+            assert result["review_required"] is True, case["input"]["column_name"]
+
+
 def test_precision_on_golden_set():
     cases = _load_cases()
     predicted_pii = [case for case in cases if detector.detect(case["input"])["is_pii"]]
@@ -182,6 +201,6 @@ def test_golden_set_shape():
     assert len(categories) >= 8
 
 
-def _load_cases():
-    path = Path(__file__).with_name("schema_test_cases.json")
+def _load_cases(file_name: str = "schema_test_cases.json"):
+    path = Path(__file__).with_name(file_name)
     return json.loads(path.read_text())

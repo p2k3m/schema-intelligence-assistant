@@ -210,7 +210,19 @@ def _table_context_score(category: str, table_name: str) -> tuple[float, str]:
 
 def _has_ambiguous_identifier_signal(column_name: str) -> bool:
     text = _normalize_identifier(column_name)
-    ambiguous_tokens = ("ref", "reference", "code", "identifier", "number", "num", "no")
+    ambiguous_tokens = (
+        "ref",
+        "reference",
+        "code",
+        "identifier",
+        "number",
+        "num",
+        "no",
+        "username",
+        "user name",
+        "login",
+        "handle",
+    )
     return any(_contains_phrase(text, token) for token in ambiguous_tokens)
 
 
@@ -230,6 +242,7 @@ def _is_known_non_pii(column_name: str) -> bool:
         "address validation status",
         "created at",
         "updated at",
+        "release date",
         "error message",
         "email template name",
         "email bounce count",
@@ -264,31 +277,31 @@ def _score_from_ratio(ratio: float, strong: float, weak: float = 0.20) -> float:
 
 def _email_samples(samples: list[str]) -> tuple[float, str | None]:
     ratio = _ratio(samples, lambda value: bool(EMAIL_RE.fullmatch(value)))
-    score = _score_from_ratio(ratio, 0.42)
+    score = _score_from_ratio(ratio, 0.62, 0.42)
     return score, "sample values match email format" if score else None
 
 
 def _phone_samples(samples: list[str]) -> tuple[float, str | None]:
     ratio = _ratio(samples, _looks_like_phone)
-    score = _score_from_ratio(ratio, 0.36)
+    score = _score_from_ratio(ratio, 0.62, 0.36)
     return score, "sample values match phone number format" if score else None
 
 
 def _ssn_samples(samples: list[str]) -> tuple[float, str | None]:
     ratio = _ratio(samples, lambda value: bool(SSN_RE.fullmatch(value.replace(" ", ""))))
-    score = _score_from_ratio(ratio, 0.46)
+    score = _score_from_ratio(ratio, 0.70, 0.46)
     return score, "sample values match SSN format" if score else None
 
 
 def _credit_card_samples(samples: list[str]) -> tuple[float, str | None]:
     ratio = _ratio(samples, _looks_like_credit_card)
-    score = _score_from_ratio(ratio, 0.46)
+    score = _score_from_ratio(ratio, 0.70, 0.46)
     return score, "sample values pass credit card format checks" if score else None
 
 
 def _account_samples(samples: list[str]) -> tuple[float, str | None]:
     ratio = _ratio(samples, _looks_like_account_number)
-    score = _score_from_ratio(ratio, 0.36)
+    score = _score_from_ratio(ratio, 0.62, 0.36)
     return score, "sample values match account number format" if score else None
 
 
@@ -300,19 +313,19 @@ def _dob_samples(samples: list[str]) -> tuple[float, str | None]:
 
 def _address_samples(samples: list[str]) -> tuple[float, str | None]:
     ratio = _ratio(samples, _looks_like_address)
-    score = _score_from_ratio(ratio, 0.36)
+    score = _score_from_ratio(ratio, 0.62, 0.36)
     return score, "sample values match postal address patterns" if score else None
 
 
 def _ip_samples(samples: list[str]) -> tuple[float, str | None]:
     ratio = _ratio(samples, _looks_like_ip_address)
-    score = _score_from_ratio(ratio, 0.44)
+    score = _score_from_ratio(ratio, 0.65, 0.44)
     return score, "sample values match IP address format" if score else None
 
 
 def _national_id_samples(samples: list[str]) -> tuple[float, str | None]:
     ratio = _ratio(samples, _looks_like_national_id)
-    score = _score_from_ratio(ratio, 0.38)
+    score = _score_from_ratio(ratio, 0.65, 0.38)
     return score, "sample values match national identifier format" if score else None
 
 
@@ -323,6 +336,8 @@ def _full_name_samples(samples: list[str]) -> tuple[float, str | None]:
 
 
 def _looks_like_phone(value: str) -> bool:
+    if re.search(r"\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}", value):
+        return False
     digits = re.sub(r"\D", "", value)
     if not 10 <= len(digits) <= 15:
         return False
@@ -414,7 +429,7 @@ EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 PHONE_HINT_RE = re.compile(r"[\s().-]")
 SSN_RE = re.compile(r"\d{3}-?\d{2}-?\d{4}")
 ADDRESS_RE = re.compile(
-    r"\b\d{1,6}\s+[A-Za-z0-9.' -]+\s+"
+    r"\b\d{1,6}[A-Za-z]?\s+[A-Za-z0-9.' -]+\s+"
     r"(street|st|avenue|ave|road|rd|lane|ln|drive|dr|way|blvd|boulevard)\b",
     re.IGNORECASE,
 )
@@ -444,6 +459,9 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
             ("email_address", 0.74),
             ("email", 0.72),
             ("e_mail", 0.72),
+            ("mail", 0.68),
+            ("email_id", 0.74),
+            ("email_hash", 0.50),
             ("correo_electronico", 0.74),
             ("mail_addr", 0.70),
             ("usr_mail_txt", 0.70),
@@ -454,7 +472,10 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
     "PHONE": CategoryRule(
         aliases=(
             ("phone_number", 0.72),
+            ("phone_no", 0.72),
             ("mobile_phone", 0.72),
+            ("mobile", 0.68),
+            ("contact_no", 0.70),
             ("telephone", 0.68),
             ("cell_phone", 0.70),
             ("msisdn", 0.74),
@@ -477,6 +498,9 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
             ("credit_card_number", 0.82),
             ("credit card number", 0.82),
             ("card_number", 0.74),
+            ("card_pan", 0.82),
+            ("pan", 0.78),
+            ("primary_account_number", 0.84),
             ("cc_number", 0.76),
             ("cc_num", 0.76),
             ("payment_card", 0.70),
@@ -500,6 +524,9 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
             ("date_of_birth", 0.82),
             ("birth_date", 0.80),
             ("birthdate", 0.80),
+            ("birth_dt", 0.80),
+            ("dob_dt", 0.82),
+            ("birth_year", 0.45),
             ("dob", 0.82),
         ),
         sample_matcher=_dob_samples,
@@ -512,6 +539,10 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
             ("billing_address", 0.76),
             ("home_address", 0.76),
             ("postal_address", 0.74),
+            ("addr1", 0.70),
+            ("addr2", 0.65),
+            ("address1", 0.72),
+            ("address2", 0.68),
             ("address_line", 0.74),
             ("home_street", 0.72),
             ("address", 0.68),
@@ -521,6 +552,9 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
     "IP_ADDRESS": CategoryRule(
         aliases=(
             ("ip_address", 0.78),
+            ("ip", 0.72),
+            ("source_ip", 0.76),
+            ("remote_addr", 0.74),
             ("last_login_ip", 0.76),
             ("login_ip", 0.74),
             ("client_ip", 0.74),
@@ -542,6 +576,9 @@ CATEGORY_RULES: dict[str, CategoryRule] = {
             ("aadhaar_no", 0.82),
             ("driver_license", 0.76),
             ("government_id", 0.78),
+            ("govt_id", 0.78),
+            ("citizen_id", 0.78),
+            ("resident_id", 0.78),
         ),
         sample_matcher=_national_id_samples,
     ),

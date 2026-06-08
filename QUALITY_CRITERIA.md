@@ -37,7 +37,7 @@ The labelled dataset is stored in `pii-detector/tests/schema_test_cases.json`. E
 - expected `is_pii`
 - expected `pii_category` where applicable
 
-The initial golden set has 30 column descriptors: 15 PII and 15 non-PII. It covers at least eight required PII categories and deliberately includes examples that are easy to misclassify.
+The primary golden set has 38 column descriptors: 19 PII and 19 non-PII. It covers at least eight required PII categories and deliberately includes examples that are easy to misclassify. A second adversarial set adds 30 realistic alias, sample-only, review-worthy, and false-positive trap cases.
 
 Required edge cases:
 

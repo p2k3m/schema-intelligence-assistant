@@ -186,6 +186,14 @@ def synthesize_response(state: AgentState) -> AgentState:
     if route == ROUTE_SINGLE_COLUMN:
         result = state["detections"][0]
         single_column = state["single_column"]
+        if result["review_required"] and not result["is_pii"]:
+            return {
+                "response": (
+                    f"{single_column['table_name']}.{single_column['column_name']} is ambiguous, "
+                    "not auto-classified as PII, and requires human review. "
+                    f"Confidence: {result['confidence']:.2f}. Reasoning: {result['reasoning']}"
+                )
+            }
         category = result["pii_category"] or "not PII"
         return {
             "response": (
@@ -260,11 +268,22 @@ def _route(
 
 
 def _asks_for_schema_analysis(message: str) -> bool:
-    return ("analyse" in message or "analyze" in message) and "schema" in message
+    analysis_terms = ("analyse", "analyze", "scan", "find", "identify", "detect", "inspect")
+    schema_terms = ("schema", "columns", "fields", "database", "table list", "tables")
+    pii_terms = ("pii", "sensitive", "personal")
+    return (
+        any(term in message for term in analysis_terms)
+        and any(term in message for term in schema_terms)
+        and any(term in message for term in pii_terms)
+    )
 
 
 def _asks_for_config(message: str) -> bool:
-    return "generate" in message and "masking configuration" in message
+    action_terms = ("generate", "create", "build", "produce")
+    config_terms = ("masking configuration", "masking rules", "masking policy", "masking config")
+    return any(term in message for term in action_terms) and any(
+        term in message for term in config_terms
+    )
 
 
 def _is_documentation_question(message: str) -> bool:
@@ -295,11 +314,16 @@ def _is_out_of_scope(message: str) -> bool:
 
 
 def _extract_single_column_question(message: str) -> dict[str, Any] | None:
-    match = re.search(
-        r"column\s+(?P<column>[A-Za-z0-9_]+)\s+in\s+table\s+(?P<table>[A-Za-z0-9_]+)",
-        message,
-        flags=re.IGNORECASE,
+    patterns = (
+        r"(?:column|field)\s+(?P<column>[A-Za-z0-9_]+)\s+in\s+table\s+(?P<table>[A-Za-z0-9_]+)",
+        r"(?:column|field)\s+(?P<column>[A-Za-z0-9_]+)\s+in\s+(?P<table>[A-Za-z0-9_]+)",
+        r"(?:is|classify)\s+(?P<table>[A-Za-z0-9_]+)\.(?P<column>[A-Za-z0-9_]+)",
     )
+    match = None
+    for pattern in patterns:
+        match = re.search(pattern, message, flags=re.IGNORECASE)
+        if match:
+            break
     if not match:
         return None
     return {

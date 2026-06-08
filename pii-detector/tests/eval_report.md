@@ -12,3 +12,9 @@ Golden set: `pii-detector/tests/schema_test_cases.json`
 - Recall@PII: 1.00
 
 The Day 1 success metric in `QUALITY_CRITERIA.md` requires Recall@PII >= 0.80. The current detector meets that threshold on the labelled golden set.
+
+Additional adversarial set: `pii-detector/tests/adversarial_schema_test_cases.json`
+
+- Total cases: 30
+- Focus: realistic aliases, sample-only evidence, review-worthy usernames, and operational false-positive traps
+- Required adversarial Recall@PII: 0.85

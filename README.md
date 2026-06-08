@@ -7,23 +7,31 @@ AI-assisted schema review for enterprise data masking. The project detects likel
 ## Architecture
 
 ```text
-Schema JSON
-   |
-   v
-PII Detector ---------+
-   |                  |
-   v                  v
-Detection Results   Documentation Question
-   |                  |
-   v                  v
-Masking Generator   Hybrid RAG: vector cosine + BM25 + RRF
-   |                  |
-   v                  v
-Masking Config JSON  Grounded Answer with Citation
-   \                  /
-    \                /
-     v              v
-      Local Schema Intelligence Agent
+                 +--------------------+
+Schema JSON ---> | PII Detector       |
+                 | - aliases          |
+                 | - regex samples    |
+                 | - confidence bands |
+                 +---------+----------+
+                           |
+                           v
+                 +--------------------+
+                 | Detection Results  |
+                 | PII / Review / No  |
+                 +---------+----------+
+                           |
+                           v
+                 +--------------------+        +----------------------+
+                 | Masking Generator  | <----> | RAG Retriever         |
+                 | rules + review q   |        | Vector + BM25 + RRF   |
+                 +---------+----------+        +----------+-----------+
+                           |                              |
+                           v                              v
+                 +--------------------+        +----------------------+
+                 | Masking Config JSON|        | Cited doc snippets    |
+                 +--------------------+        +----------------------+
+
+                 Agent orchestrates all tools and refuses out-of-scope input.
 ```
 
 ## Setup
@@ -88,12 +96,23 @@ The detector uses a hybrid deterministic signal scorer: semantic column/table-na
 - Package the local runner as a small FastAPI service for UI and API demos.
 - Replace the SQLite demo adapter with read-only connectors for PostgreSQL, Oracle, SQL Server, and Snowflake metadata APIs.
 
+## Known Limitations
+
+| Limitation | Current Guardrail | Future Fix |
+|---|---|---|
+| Obfuscated customer-specific PII names may be missed | Review queue + optional LLM reviewer | Add feedback-driven alias expansion |
+| Sample-only PII can be under-scored | Strong regex sample signals and adversarial tests | Add sampled-value embeddings and customer policy profiles |
+| RAG corpus is local markdown | Versioned corpus files + Recall@3 eval gate | Docs CI ingestion pipeline |
+| Agent routing is deterministic | LangGraph state tests for required routes and synonyms | Add an intent classifier with an intent eval set |
+| Live model checks are optional | Env-gated Ollama and sentence-transformers tests | Run optional checks in a nightly model-enabled workflow |
+
 ## Test Coverage Summary
 
 Covered:
 
 - PII detector unit tests, exact category mapping, recall, precision, and dataset shape.
 - Golden set with 38 labelled cases across at least 8 PII categories.
+- Adversarial set with 30 realistic alias, sample-only, and false-positive trap cases.
 - RAG category filtering and Recall@3.
 - Masking generator review queue behavior, documentation references, and detector-to-generator integration.
 - Agent semantic correctness, retrieval grounding enforcement, out-of-scope rejection, PII recall regression, masking config completeness, and A/B baseline report generation.

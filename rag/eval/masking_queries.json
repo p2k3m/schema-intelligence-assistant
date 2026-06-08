@@ -38,6 +38,17 @@
   {
     "query": "how do GDPR and CCPA affect data masking workflows",
     "expected_source_title": "GDPR and CCPA Compliance"
+  },
+  {
+    "query": "how can I keep customer age distribution realistic without exposing birth date",
+    "expected_source_title": "DATE_SHIFT"
+  },
+  {
+    "query": "mask payment identifier but keep last four digits for support lookup",
+    "expected_source_title": "CREDIT_CARD_MASK and ACCOUNT_MASK"
+  },
+  {
+    "query": "developers need realistic test data but should not see real names",
+    "expected_source_title": "NAME_RANDOMIZE"
   }
 ]
-

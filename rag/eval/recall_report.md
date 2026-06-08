@@ -1,12 +1,12 @@
 # RAG Recall Report
 
-Hybrid Recall@3: 1.00 (10/10)
+Hybrid Recall@3: 1.00 (13/13)
 
 | Retriever | Recall@3 | Total latency ms | Avg latency ms/query |
 |---|---:|---:|---:|
-| vector | 1.00 (10/10) | 20.06 | 2.01 |
-| bm25 | 0.90 (9/10) | 18.73 | 1.87 |
-| hybrid | 1.00 (10/10) | 18.50 | 1.85 |
+| vector | 1.00 (13/13) | 29.18 | 2.24 |
+| bm25 | 0.92 (12/13) | 28.63 | 2.20 |
+| hybrid | 1.00 (13/13) | 28.54 | 2.20 |
 
 The hybrid retriever combines the vector and BM25 rankings with Reciprocal Rank Fusion.
 
@@ -24,6 +24,9 @@ The hybrid retriever combines the vector and BM25 rankings with Reciprocal Rank 
 | how do I mask postal addresses IP addresses and national IDs | ADDRESS_RANDOMIZE, IP_MASK, and NATIONAL_ID_MASK | Masking Functions Overview; GDPR and CCPA Compliance; ADDRESS_RANDOMIZE, IP_MASK, and NATIONAL_ID_MASK | yes |
 | how do I configure and run a masking job | Configuring and Running a Masking Job | Configuring and Running a Masking Job; Common Masking Errors and Troubleshooting; Masking Functions Overview | yes |
 | how do GDPR and CCPA affect data masking workflows | GDPR and CCPA Compliance | GDPR and CCPA Compliance; What Is Data Masking; Configuring and Running a Masking Job | yes |
+| how can I keep customer age distribution realistic without exposing birth date | DATE_SHIFT | DATE_SHIFT; NAME_RANDOMIZE; What Is Data Masking | yes |
+| mask payment identifier but keep last four digits for support lookup | CREDIT_CARD_MASK and ACCOUNT_MASK | PHONE_MASK and SSN_MASK; CREDIT_CARD_MASK and ACCOUNT_MASK; PHONE_MASK and SSN_MASK | yes |
+| developers need realistic test data but should not see real names | NAME_RANDOMIZE | NAME_RANDOMIZE; What Is Data Masking; GDPR and CCPA Compliance | yes |
 
 ## Vector vs BM25 Details
 
@@ -41,6 +44,9 @@ The hybrid retriever combines the vector and BM25 rankings with Reciprocal Rank 
 | how do I mask postal addresses IP addresses and national IDs | ADDRESS_RANDOMIZE, IP_MASK, and NATIONAL_ID_MASK | Masking Functions Overview; GDPR and CCPA Compliance; ADDRESS_RANDOMIZE, IP_MASK, and NATIONAL_ID_MASK | yes |
 | how do I configure and run a masking job | Configuring and Running a Masking Job | Configuring and Running a Masking Job; Common Masking Errors and Troubleshooting; Masking Functions Overview | yes |
 | how do GDPR and CCPA affect data masking workflows | GDPR and CCPA Compliance | GDPR and CCPA Compliance; What Is Data Masking; Configuring and Running a Masking Job | yes |
+| how can I keep customer age distribution realistic without exposing birth date | DATE_SHIFT | DATE_SHIFT; NAME_RANDOMIZE; What Is Data Masking | yes |
+| mask payment identifier but keep last four digits for support lookup | CREDIT_CARD_MASK and ACCOUNT_MASK | PHONE_MASK and SSN_MASK; PHONE_MASK and SSN_MASK; CREDIT_CARD_MASK and ACCOUNT_MASK | yes |
+| developers need realistic test data but should not see real names | NAME_RANDOMIZE | NAME_RANDOMIZE; What Is Data Masking; GDPR and CCPA Compliance | yes |
 ### bm25
 
 | Query | Expected | Top 3 | Hit |
@@ -55,3 +61,6 @@ The hybrid retriever combines the vector and BM25 rankings with Reciprocal Rank 
 | how do I mask postal addresses IP addresses and national IDs | ADDRESS_RANDOMIZE, IP_MASK, and NATIONAL_ID_MASK | GDPR and CCPA Compliance; Masking Functions Overview; What Is Data Masking | no |
 | how do I configure and run a masking job | Configuring and Running a Masking Job | Configuring and Running a Masking Job; Common Masking Errors and Troubleshooting; Masking Performance Tuning for Large Tables | yes |
 | how do GDPR and CCPA affect data masking workflows | GDPR and CCPA Compliance | GDPR and CCPA Compliance; What Is Data Masking; Configuring and Running a Masking Job | yes |
+| how can I keep customer age distribution realistic without exposing birth date | DATE_SHIFT | DATE_SHIFT; NAME_RANDOMIZE; What Is Data Masking | yes |
+| mask payment identifier but keep last four digits for support lookup | CREDIT_CARD_MASK and ACCOUNT_MASK | CREDIT_CARD_MASK and ACCOUNT_MASK; CREDIT_CARD_MASK and ACCOUNT_MASK; PHONE_MASK and SSN_MASK | yes |
+| developers need realistic test data but should not see real names | NAME_RANDOMIZE | NAME_RANDOMIZE; What Is Data Masking; Masking Performance Tuning for Large Tables | yes |

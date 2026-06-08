@@ -28,10 +28,14 @@ class MaskingConfigGenerator:
         review_queue = []
 
         for detection in normalized:
+            if detection["review_required"]:
+                review_queue.append(_review_item(detection))
+                continue
+
             if not detection["is_pii"]:
                 continue
 
-            if detection["review_required"] or detection["confidence"] < 0.80:
+            if detection["confidence"] < 0.80:
                 review_queue.append(_review_item(detection))
                 continue
 
@@ -54,7 +58,11 @@ class MaskingConfigGenerator:
             "confidence_summary": {
                 "auto_configured": len(rules),
                 "requires_review": len(review_queue),
-                "not_pii": sum(1 for detection in normalized if not detection["is_pii"]),
+                "not_pii": sum(
+                    1
+                    for detection in normalized
+                    if not detection["is_pii"] and not detection["review_required"]
+                ),
             },
             "masking_rules": rules,
             "review_queue": review_queue,
@@ -101,7 +109,7 @@ def _normalize_detection(detection: DetectionResult | dict[str, Any]) -> dict[st
 
 
 def _review_item(detection: dict[str, Any]) -> dict[str, Any]:
-    suggested = detection["recommended_masking_function"]
+    suggested = detection["recommended_masking_function"] or "UNDETERMINED"
     alternatives = [
         function
         for function in MASKING_FUNCTIONS.values()
@@ -111,8 +119,7 @@ def _review_item(detection: dict[str, Any]) -> dict[str, Any]:
     return {
         "table": detection["table"],
         "column": detection["column"],
-        "reason": f"Low confidence ({detection['confidence']:.2f}) - {reason}",
+        "reason": f"Review required ({detection['confidence']:.2f}) - {reason}",
         "suggested_function": suggested,
         "alternatives": alternatives,
     }
-
